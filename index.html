@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Deal to Telegram</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+        }
+        input[type="text"],
+        input[type="url"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus,
+        input[type="url"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: #3b82f6; /* Tailwind blue-500 */
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        button:hover {
+            background-color: #2563eb;
+            box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
+            transform: translateY(-2px);
+        }
+        button:active {
+            background-color: #1d4ed8;
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+            opacity: 0.8;
+        }
+        .message-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-weight: 500;
+            text-align: center;
+        }
+        .message-box.success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #34d399;
+        }
+        .message-box.error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+
+        #postButton{
+            background: #065f46;
+            color: #f0f2f5;
+            padding: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Share a New Deal</h1>
+
+        <form id="dealForm">
+            <label for="dealUrl" class="block text-gray-700 text-sm font-semibold mb-2">Deal URL:</label>
+            <input type="url" id="dealUrl" placeholder="e.g., https://www.amazon.com/product" required>
+
+            <label for="productTitle" class="block text-gray-700 text-sm font-semibold mb-2">Product Title:</label>
+            <input type="text" id="productTitle" placeholder="e.g., Amazing Gadget Pro" required>
+
+            <label for="originalPrice" class="block text-gray-700 text-sm font-semibold mb-2">Original Price:</label>
+            <input type="number" id="originalPrice" step="0.01" placeholder="e.g., 100.00" required>
+
+            <label for="currentPrice" class="block text-gray-700 text-sm font-semibold mb-2">Current Price:</label>
+            <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 75.00" required>
+
+            <button type="submit" id="postButton">Post to Telegram</button>
+        </form>
+
+        <div id="message" class="message-box hidden"></div>
+    </div>
+
+    <script>
+        // ⚠️ IMPORTANT: Replace these with your actual Telegram Bot Token and Channel Chat ID
+        // As warned above, exposing your token in client-side code is a security risk.
+        // For production, consider using a backend proxy.
+        const TELEGRAM_BOT_TOKEN = '';
+        const TELEGRAM_CHANNEL_CHAT_ID = ''; // E.g., -1001234567890
+
+        const dealForm = document.getElementById('dealForm');
+        const postButton = document.getElementById('postButton');
+        const messageBox = document.getElementById('message');
+
+        dealForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Prevent default form submission
+
+            // Get form values
+            const dealUrl = document.getElementById('dealUrl').value;
+            const productTitle = document.getElementById('productTitle').value;
+            const originalPrice = parseFloat(document.getElementById('originalPrice').value);
+            const currentPrice = parseFloat(document.getElementById('currentPrice').value);
+
+            // Basic validation
+            if (!dealUrl || !productTitle || isNaN(originalPrice) || isNaN(currentPrice)) {
+                showMessage('Please fill in all fields with valid numbers for prices.', 'error');
+                return;
+            }
+            if (currentPrice >= originalPrice) {
+                showMessage('Current price must be less than original price for a deal.', 'error');
+                return;
+            }
+
+            // Calculate discount percentage
+            const discountPercent = ((originalPrice - currentPrice) / originalPrice) * 100;
+
+            // Construct the Telegram message
+            const messageText = `
+🔥 NEW DEAL! 🔥
+
+✨ *${productTitle}* ✨
+💥 NOW ONLY ₹${currentPrice.toFixed(2)} (Original price ~~$${originalPrice.toFixed(2)}~~)
+🔥 *SAVE ${discountPercent.toFixed(2)}% OFF – for a limited time!*
+
+🛒 Grab it now: [Shop Here!](${dealUrl})
+`;
+
+            // Telegram API endpoint
+            const telegramApiUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+
+            // Prepare the payload
+            const payload = {
+                chat_id: TELEGRAM_CHANNEL_CHAT_ID,
+                text: messageText,
+                parse_mode: 'Markdown', // Use Markdown for formatting (bold, links)
+                disable_web_page_preview: false // Allow Telegram to generate a link preview
+            };
+
+            postButton.disabled = true; // Disable button to prevent multiple submissions
+            postButton.textContent = 'Posting...';
+            showMessage('Sending deal to Telegram...', ''); // Clear previous messages
+
+            try {
+                const response = await fetch(telegramApiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.ok) {
+                    showMessage('Deal successfully posted to Telegram!', 'success');
+                    dealForm.reset(); // Clear the form
+                } else {
+                    console.error('Telegram API Error:', data);
+                    showMessage(`Failed to post deal: ${data.description || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Network or Fetch Error:', error);
+                showMessage('An error occurred while connecting to Telegram. Check console for details.', 'error');
+            } finally {
+                postButton.disabled = false; // Re-enable button
+                postButton.textContent = 'Post to Telegram';
+            }
+        });
+
+        // Function to display messages to the user
+        function showMessage(msg, type) {
+            messageBox.textContent = msg;
+            messageBox.className = `message-box ${type}`; // Apply success/error/empty class
+            messageBox.classList.remove('hidden'); // Make it visible
+        }
+    </script>
+</body>
+</html>
+
